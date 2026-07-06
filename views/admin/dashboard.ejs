@@ -1,5 +1,10 @@
 <%- include('../partials/header') %>
 
+<!-- AÑADIR: Librerías de Flatpickr -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/dark.css">
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
 <div class="max-w-6xl mx-auto">
   <!-- Dashboard Header -->
   <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
@@ -21,15 +26,18 @@
     </a>
   </div>
 
-  <!-- Filters -->
+  <!-- Filters - MODIFICADO -->
   <div class="flex flex-wrap gap-4 mb-6 items-center">
-    <form action="/admin/dashboard" method="GET" class="flex items-center gap-2">
+    <form action="/admin/dashboard" method="GET" class="flex items-center gap-2" id="filterForm">
       <input type="hidden" name="estado" value="<%= currentFilter %>">
       <input 
-        type="date" 
+        type="text"
         name="date" 
+        id="dateFilter"
         value="<%= selectedDate %>"
-        class="bg-white/5 border border-white/10 rounded-xl text-white text-xs px-3 py-2 focus:outline-none"
+        class="bg-white/5 border border-white/10 rounded-xl text-white text-xs px-3 py-2 focus:outline-none w-40"
+        readonly
+        placeholder="Selecciona fecha"
       >
       <button type="submit" class="px-4 py-2 rounded-xl text-xs font-semibold bg-yellow-400 text-slate-950 border border-yellow-400 hover:bg-yellow-350 transition">
         Filtrar
@@ -232,35 +240,83 @@
 </div>
 
 <script>
-  const modal = document.getElementById('imageModal');
-  const modalImg = document.getElementById('modalImg');
-  const closeModal = document.getElementById('closeModal');
+  // ============================================
+  // 1. INICIALIZAR FLATPICKR
+  // ============================================
+  document.addEventListener('DOMContentLoaded', function() {
+    const dateFilter = document.getElementById('dateFilter');
+    const filterForm = document.getElementById('filterForm');
+    const selectedDate = "<%= selectedDate %>";
 
-  document.querySelectorAll('.view-img-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      modalImg.src = btn.getAttribute('data-img-url');
-      modal.classList.remove('hidden');
-      document.body.classList.add('overflow-hidden');
+    // Inicializar Flatpickr
+    const fp = flatpickr(dateFilter, {
+      dateFormat: "Y-m-d",
+      defaultDate: selectedDate || new Date(),
+      theme: "dark",
+      disableMobile: true,
+      allowInput: false,
+      monthSelectorType: "dropdown",
+      prevArrow: "‹",
+      nextArrow: "›",
+      locale: {
+        firstDayOfWeek: 1,
+        weekdays: {
+          shorthand: ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'],
+          longhand: ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
+        },
+        months: {
+          shorthand: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'],
+          longhand: ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
+        }
+      },
+      // Auto-enviar el formulario al seleccionar fecha (opcional)
+      onChange: function(selectedDates, dateStr, instance) {
+        if (dateStr) {
+          // Actualizar el valor y enviar el formulario automáticamente
+          filterForm.submit();
+        }
+      }
     });
-  });
 
-  const hideModal = () => {
-    modal.classList.add('hidden');
-    document.body.classList.remove('overflow-hidden');
-  };
+    // ============================================
+    // 2. MODAL DE IMÁGENES
+    // ============================================
+    const modal = document.getElementById('imageModal');
+    const modalImg = document.getElementById('modalImg');
+    const closeModal = document.getElementById('closeModal');
 
-  closeModal.addEventListener('click', hideModal);
+    document.querySelectorAll('.view-img-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        modalImg.src = btn.getAttribute('data-img-url');
+        modal.classList.remove('hidden');
+        document.body.classList.add('overflow-hidden');
+      });
+    });
 
-  modal.addEventListener('click', (e) => {
-    if (e.target === modal || e.target === closeModal) {
-      hideModal();
-    }
-  });
+    const hideModal = () => {
+      modal.classList.add('hidden');
+      document.body.classList.remove('overflow-hidden');
+    };
 
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
-      hideModal();
-    }
+    closeModal.addEventListener('click', hideModal);
+
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal || e.target === closeModal) {
+        hideModal();
+      }
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
+        hideModal();
+      }
+    });
+
+    // ============================================
+    // 3. OPCIONAL: Preservar filtros al recargar
+    // ============================================
+    // Si quieres que al recargar la página se mantenga el filtro
+    // (ya lo haces con el value del input)
   });
 </script>
 

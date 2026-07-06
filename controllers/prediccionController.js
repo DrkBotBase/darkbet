@@ -1,4 +1,4 @@
-const moment = require('moment');
+const moment = require('moment-timezone');
 // Load Spanish locale for moment
 require('moment/locale/es');
 moment.locale('es');
@@ -7,12 +7,29 @@ const Prediccion = require('../models/Prediccion');
 const { uploadFromBuffer, deleteImage } = require('../utils/cloudinary');
 const { validationResult } = require('express-validator');
 
-// Helper to get Colombia time range
+// Helper to get Colombia time range (UTC-5)
 const getColombiaRange = (dateString) => {
-  const m = dateString ? moment(dateString, 'YYYY-MM-DD') : moment();
-  const start = m.utcOffset(-5).startOf('day').toDate();
-  const end = m.utcOffset(-5).endOf('day').toDate();
+  // Crear el momento en la zona horaria de Colombia
+  const m = dateString 
+    ? moment.tz(dateString, 'YYYY-MM-DD', 'America/Bogota') 
+    : moment().tz('America/Bogota');
+  
+  // Obtener el inicio y fin del día en Colombia, convertir a UTC Date
+  const start = m.clone().startOf('day').utc().toDate();
+  const end = m.clone().endOf('day').utc().toDate();
+  
   return { start, end };
+};
+
+// Helper para formatear fecha en Colombia
+const formatColombiaDate = (dateString) => {
+  const m = dateString 
+    ? moment.tz(dateString, 'YYYY-MM-DD', 'America/Bogota')
+    : moment().tz('America/Bogota');
+  return {
+    display: m.format('dddd, D [de] MMMM [de] YYYY'),
+    iso: m.format('YYYY-MM-DD')
+  };
 };
 
 /**
@@ -28,15 +45,15 @@ const getPublicIndex = async (req, res, next) => {
       fecha: { $gte: start, $lte: end }
     }).sort({ hora: 1 });
     
-    // Get date for display
-    const displayDate = req.query.date ? moment(req.query.date).format('dddd, D [de] MMMM [de] YYYY') : moment().utcOffset(-5).format('dddd, D [de] MMMM [de] YYYY');
+    // Fecha para mostrar
+    const fechaInfo = formatColombiaDate(req.query.date);
     
     res.render('index', {
       predictions,
-      formattedDate: displayDate,
-      selectedDate: req.query.date || moment().utcOffset(-5).format('YYYY-MM-DD'),
+      formattedDate: fechaInfo.display,
+      selectedDate: fechaInfo.iso,
       moment,
-      title: process.env.NAME_PROYECT || 'Live Bets'
+      title: process.env.NAME_PROYECT || 'Dark Bets'
     });
   } catch (err) {
     next(err);
@@ -52,9 +69,11 @@ const getPublicApi = async (req, res, next) => {
       fecha: { $gte: start, $lte: end }
     }).sort({ hora: 1 });
     
+    const fechaInfo = formatColombiaDate(req.query.date);
+    
     res.json({
       success: true,
-      fecha: req.query.date || moment().utcOffset(-5).format('YYYY-MM-DD'),
+      fecha: fechaInfo.iso,
       predictions
     });
   } catch (err) {
@@ -102,7 +121,7 @@ const getDashboard = async (req, res, next) => {
     const limit = 10;
     const skip = (page - 1) * limit;
     
-    // Date filter
+    // Date filter usando Colombia
     const { start, end } = getColombiaRange(req.query.date);
     
     // Combined Filters
@@ -119,13 +138,16 @@ const getDashboard = async (req, res, next) => {
       .sort({ fecha: -1, hora: -1 })
       .skip(skip)
       .limit(limit);
+    
+    // Fecha seleccionada en Colombia
+    const fechaInfo = formatColombiaDate(req.query.date);
       
     res.render('admin/dashboard', {
       predictions,
       currentPage: page,
       totalPages: Math.ceil(totalItems / limit),
       currentFilter: req.query.estado || '',
-      selectedDate: req.query.date || moment().utcOffset(-5).format('YYYY-MM-DD'),
+      selectedDate: fechaInfo.iso,
       moment
     });
   } catch (err) {
@@ -135,7 +157,7 @@ const getDashboard = async (req, res, next) => {
 
 // GET /admin/crear - Render creation form
 const getCrear = (req, res) => {
-  const defaultDate = moment().utcOffset(-5).format('YYYY-MM-DD');
+  const defaultDate = moment().tz('America/Bogota').format('YYYY-MM-DD');
   res.render('admin/crear', {
     errors: [],
     oldInput: {
@@ -158,8 +180,8 @@ const postCrear = async (req, res, next) => {
   try {
     const { encuentro, fecha, hora, prediccion, cuota, estado, notas } = req.body;
     
-    // Parse the date as Colombia timezone start of day
-    const parsedFecha = moment.utc(`${fecha} 00:00:00-05:00`).toDate();
+    // Parsear la fecha como Colombia (UTC-5) y convertir a Date
+    const parsedFecha = moment.tz(fecha, 'YYYY-MM-DD', 'America/Bogota').toDate();
     
     let imagenUrl = null;
     let imagenPublicId = null;
@@ -202,8 +224,8 @@ const getEditar = async (req, res, next) => {
       return res.redirect('/admin/dashboard');
     }
     
-    // Format date back to YYYY-MM-DD for form input (relative to Colombia UTC-5)
-    const formattedFecha = moment(prediction.fecha).utcOffset(-5).format('YYYY-MM-DD');
+    // Formatear fecha desde la BD (que está en UTC) a Colombia
+    const formattedFecha = moment(prediction.fecha).tz('America/Bogota').format('YYYY-MM-DD');
     
     res.render('admin/editar', {
       prediction,
@@ -227,7 +249,7 @@ const postEditar = async (req, res, next) => {
     }
     
     if (!errors.isEmpty()) {
-      const formattedFecha = moment(prediction.fecha).utcOffset(-5).format('YYYY-MM-DD');
+      const formattedFecha = moment(prediction.fecha).tz('America/Bogota').format('YYYY-MM-DD');
       return res.status(400).render('admin/editar', {
         prediction: { ...prediction.toObject(), ...req.body },
         errors: errors.array(),
@@ -237,12 +259,10 @@ const postEditar = async (req, res, next) => {
     
     const { encuentro, fecha, hora, prediccion: descPrediccion, cuota, estado, notas } = req.body;
     
-    // Validation: No permitir cambiar el estado a "ganada" o "perdida" sin imagen (opcional en prompt, let's allow or require, let's implement validation if required but make it robust)
-    // "Validación: No permitir cambiar el estado a 'ganada' o 'perdida' sin imagen (opcional)"
-    // Let's implement it! If they change status to won/lost and there is no image and no new uploaded file:
+    // Validación: No permitir cambiar el estado a "ganada" o "perdida" sin imagen
     const hasImage = prediction.imagenUrl || req.file;
     if ((estado === 'ganada' || estado === 'perdida') && !hasImage) {
-      const formattedFecha = moment(prediction.fecha).utcOffset(-5).format('YYYY-MM-DD');
+      const formattedFecha = moment(prediction.fecha).tz('America/Bogota').format('YYYY-MM-DD');
       return res.status(400).render('admin/editar', {
         prediction: { ...prediction.toObject(), ...req.body },
         errors: [{ msg: 'Debe subir una imagen de evidencia para marcar la predicción como Ganada o Perdida.' }],
@@ -250,8 +270,8 @@ const postEditar = async (req, res, next) => {
       });
     }
     
-    // Parse date as Colombia timezone
-    const parsedFecha = moment.utc(`${fecha} 00:00:00-05:00`).toDate();
+    // Parsear fecha como Colombia (UTC-5)
+    const parsedFecha = moment.tz(fecha, 'YYYY-MM-DD', 'America/Bogota').toDate();
     
     prediction.encuentro = encuentro;
     prediction.fecha = parsedFecha;

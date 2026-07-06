@@ -1,14 +1,22 @@
 <%- include('partials/header') %>
 
+<!-- AÑADIR: Librerías de Flatpickr -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<!-- Tema oscuro opcional (combina con tu diseño) -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/dark.css">
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
 <div class="max-w-4xl mx-auto">
-  <!-- Date Filter -->
+  <!-- Date Filter - MODIFICADO -->
   <div class="mb-8 flex justify-center">
     <div class="bg-white/5 p-2 rounded-xl border border-white/10 flex items-center gap-2">
       <input 
-        type="date" 
+        type="text"
         id="dateFilter"
         value="<%= selectedDate %>"
         class="px-2 py-2 rounded-xl text-xs font-semibold border transition duration-150 bg-white/5 border-white/10 text-purple-200/80 hover:bg-white/10"
+        readonly
+        placeholder="Selecciona fecha"
       >
     </div>
   </div>
@@ -130,71 +138,123 @@
 </div>
 
 <script>
-  const modal = document.getElementById('imageModal');
-  const modalImg = document.getElementById('modalImg');
-  const closeModal = document.getElementById('closeModal');
-  const dateFilter = document.getElementById('dateFilter');
+  // ============================================
+  // 1. INICIALIZAR FLATPICKR
+  // ============================================
+  document.addEventListener('DOMContentLoaded', function() {
+    const dateFilter = document.getElementById('dateFilter');
+    const selectedDate = "<%= selectedDate %>";
 
-  // Existing modal logic
-  document.querySelectorAll('.view-img-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
+    // Inicializar Flatpickr
+    const fp = flatpickr(dateFilter, {
+      dateFormat: "Y-m-d",  // Formato que usa tu backend
+      defaultDate: selectedDate || new Date(),  // Fecha del servidor o hoy
+      theme: "dark",  // Tema oscuro que combina con tu diseño
+      disableMobile: true,  // Mismo diseño en móvil
+      allowInput: false,  // Solo selección desde el calendario
+      monthSelectorType: "dropdown",  // Selector de mes más moderno
+      prevArrow: "‹",
+      nextArrow: "›",
+      locale: {
+        firstDayOfWeek: 1,  // Lunes como primer día
+        weekdays: {
+          shorthand: ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'],
+          longhand: ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
+        },
+        months: {
+          shorthand: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'],
+          longhand: ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
+        }
+      },
+      // Disparar el filtro al seleccionar fecha
+      onChange: function(selectedDates, dateStr, instance) {
+        if (dateStr) {
+          filterByDate(dateStr);
+        }
+      }
+    });
+
+    // ============================================
+    // 2. FUNCIÓN DE FILTRADO (extraída para reuso)
+    // ============================================
+    async function filterByDate(date) {
+      try {
+        const response = await fetch(`/?date=${date}`);
+        const text = await response.text();
+        
+        // Parsear el HTML
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(text, 'text/html');
+        
+        // Actualizar DOM
+        document.getElementById('formattedDate').innerHTML = doc.getElementById('formattedDate').innerHTML;
+        document.getElementById('predictionsContainer').innerHTML = doc.getElementById('predictionsContainer').innerHTML;
+        
+        // Re-asignar listeners a los nuevos botones de imágenes
+        attachImageModalListeners();
+        
+        // Actualizar URL sin recargar
+        window.history.pushState({}, '', `/?date=${date}`);
+      } catch (err) {
+        console.error('Error fetching data:', err);
+      }
+    }
+
+    // ============================================
+    // 3. MODAL DE IMÁGENES (con función reusable)
+    // ============================================
+    const modal = document.getElementById('imageModal');
+    const modalImg = document.getElementById('modalImg');
+    const closeModal = document.getElementById('closeModal');
+
+    function attachImageModalListeners() {
+      document.querySelectorAll('.view-img-btn').forEach(btn => {
+        btn.removeEventListener('click', showImageModal); // Evitar duplicados
+        btn.addEventListener('click', showImageModal);
+      });
+    }
+
+    function showImageModal(e) {
+      const btn = e.currentTarget;
       modalImg.src = btn.getAttribute('data-img-url');
       modal.classList.remove('hidden');
       document.body.classList.add('overflow-hidden');
+    }
+
+    function hideModal() {
+      modal.classList.add('hidden');
+      document.body.classList.remove('overflow-hidden');
+    }
+
+    // Listeners del modal
+    closeModal.addEventListener('click', hideModal);
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal || e.target === closeModal) {
+        hideModal();
+      }
     });
-  });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
+        hideModal();
+      }
+    });
 
-  const hideModal = () => {
-    modal.classList.add('hidden');
-    document.body.classList.remove('overflow-hidden');
-  };
+    // Inicializar listeners de imágenes
+    attachImageModalListeners();
 
-  closeModal.addEventListener('click', hideModal);
+    // ============================================
+    // 4. MANEJO DE NAVEGACIÓN (botón atrás/adelante)
+    // ============================================
+    window.addEventListener('popstate', function() {
+      // Cuando el usuario usa el botón atrás/adelante
+      const currentDate = new URLSearchParams(window.location.search).get('date') || '';
+      if (currentDate) {
+        fp.setDate(currentDate, false); // Actualizar Flatpickr sin disparar onChange
+        filterByDate(currentDate);
+      }
+    });
 
-  modal.addEventListener('click', (e) => {
-    if (e.target === modal || e.target === closeModal) {
-      hideModal();
-    }
-  });
-
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
-      hideModal();
-    }
-  });
-
-  // NEW: Instant filtering logic
-  dateFilter.addEventListener('change', async () => {
-    const date = dateFilter.value;
-    
-    // Fetch new content
-    try {
-      const response = await fetch(`/?date=${date}`);
-      const text = await response.text();
-      
-      // Parse the returned HTML
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(text, 'text/html');
-      
-      // Update DOM
-      document.getElementById('formattedDate').innerHTML = doc.getElementById('formattedDate').innerHTML;
-      document.getElementById('predictionsContainer').innerHTML = doc.getElementById('predictionsContainer').innerHTML;
-      
-      // Re-attach listeners to new buttons
-      document.querySelectorAll('.view-img-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-          modalImg.src = btn.getAttribute('data-img-url');
-          modal.classList.remove('hidden');
-          document.body.classList.add('overflow-hidden');
-        });
-      });
-      
-      // Update URL without reloading
-      window.history.pushState({}, '', `/?date=${date}`);
-    } catch (err) {
-      console.error('Error fetching data:', err);
-    }
-  });
+  }); // Fin DOMContentLoaded
 </script>
 
 <%- include('partials/footer') %>

@@ -1,0 +1,200 @@
+<%- include('partials/header') %>
+
+<div class="max-w-4xl mx-auto">
+  <!-- Date Filter -->
+  <div class="mb-8 flex justify-center">
+    <div class="bg-white/5 p-2 rounded-xl border border-white/10 flex items-center gap-2">
+      <input 
+        type="date" 
+        id="dateFilter"
+        value="<%= selectedDate %>"
+        class="px-2 py-2 rounded-xl text-xs font-semibold border transition duration-150 bg-white/5 border-white/10 text-purple-200/80 hover:bg-white/10"
+      >
+    </div>
+  </div>
+
+  <!-- Predictions Container -->
+  <div id="predictionsContainer">
+    <!-- Page Header -->
+    <div class="text-center mb-10">
+      <span class="inline-flex items-center space-x-1.5 px-3 py-1 bg-yellow-400/10 text-yellow-400 border border-yellow-400/20 rounded-full text-xs font-semibold uppercase tracking-wider mb-3">
+        <i class="fa-solid fa-bolt-lightning animate-pulse"></i><span>En Vivo</span>
+      </span>
+      <h1 class="text-3xl md:text-2xl font-extrabold tracking-tight bg-gradient-to-r from-white via-purple-100 to-white bg-clip-text text-transparent">
+        PREDICCIONES DE HOY
+      </h1>
+      <p class="text-purple-200/60 mt-2 text-sm md:text-base capitalize" id="formattedDate">
+        <i class="fa-regular fa-calendar-days mr-1.5 text-yellow-400/80"></i><%= formattedDate %>
+      </p>
+    </div>
+
+    <!-- Predictions Grid/List -->
+    <% if (predictions && predictions.length > 0) { %>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <% predictions.forEach(pred => { %>
+          <div class="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-6 hover:scale-[1.01] hover:border-purple-500/30 transition-all duration-300 flex flex-col justify-between group">
+            
+            <div>
+              <!-- Header: Event and Time -->
+              <div class="flex justify-between items-start mb-4">
+                <div class="flex-grow pr-2">
+                  <h3 class="text-lg font-bold text-white group-hover:text-yellow-400 transition-colors duration-300">
+                    🏆 <%= pred.encuentro %>
+                  </h3>
+                  <span class="text-xs text-purple-200/60 inline-flex items-center mt-1">
+                    <i class="fa-regular fa-clock mr-1 text-purple-400"></i><%= pred.hora %> • Colombia (UTC-5)
+                  </span>
+                </div>
+                
+                <!-- Badges -->
+                <div>
+                  <% if (pred.estado === 'pendiente') { %>
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-yellow-500/20 text-yellow-400 border border-yellow-400/20">
+                      <i class="fa-solid fa-hourglass-half mr-1 text-[10px]"></i>Pendiente
+                    </span>
+                  <% } else if (pred.estado === 'ganada') { %>
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-500/20 text-green-400 border border-green-400/20">
+                      <i class="fa-solid fa-circle-check mr-1 text-[10px]"></i>Ganada
+                    </span>
+                  <% } else if (pred.estado === 'perdida') { %>
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-500/20 text-red-400 border border-red-400/20">
+                      <i class="fa-solid fa-circle-xmark mr-1 text-[10px]"></i>Perdida
+                    </span>
+                  <% } %>
+                </div>
+              </div>
+
+              <!-- Prediction text -->
+              <div class="bg-black/25 rounded-xl p-4 border border-white/5 mb-4">
+                <span class="text-xs text-purple-300 font-semibold block uppercase tracking-wider mb-1">
+                  <i class="fa-solid fa-chart-line mr-1"></i>Predicción
+                </span>
+                <p class="text-sm md:text-base text-purple-100 font-medium whitespace-pre-line">
+                  <%= pred.prediccion %>
+                </p>
+              </div>
+              
+              <!-- Additional Notes (Optional) -->
+              <% if (pred.notas) { %>
+                <div class="text-xs text-purple-200/60 mb-4 bg-white/5 p-3 rounded-lg border border-white/5">
+                  <span class="font-bold block mb-1">Notas:</span>
+                  <%= pred.notas %>
+                </div>
+              <% } %>
+            </div>
+
+            <!-- Footer: Cuota & Image -->
+            <div class="mt-4 border-t border-white/5 pt-4">
+              <div class="flex justify-between items-center mb-4">
+                <span class="text-xs text-purple-300/80 uppercase font-semibold">Cuota / Odds</span>
+                <span class="text-lg font-bold bg-gradient-to-r from-yellow-400 to-orange-500 bg-clip-text text-transparent">
+                  💰 <%= pred.cuota %>
+                </span>
+              </div>
+
+              <!-- Button to view image evidence if exists -->
+              <% if (pred.imagenUrl) { %>
+                <div class="mt-4">
+                  <button 
+                    type="button"
+                    data-img-url="<%= pred.imagenUrl %>"
+                    class="view-img-btn w-full flex items-center justify-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-xs font-semibold text-purple-200 hover:bg-yellow-400 hover:text-slate-950 transition-all duration-300"
+                  >
+                    <i class="fa-solid fa-image"></i> Ver Imagen
+                  </button>
+                </div>
+              <% } %>
+            </div>
+          </div>
+        <% }) %>
+      </div>
+    <% } else { %>
+      <!-- Empty State -->
+      <div class="max-w-md mx-auto bg-white/5 backdrop-blur-sm border border-white/10 rounded-3xl p-8 text-center my-12">
+        <div class="text-5xl mb-4 animate-bounce">🔮</div>
+        <h3 class="text-xl font-bold text-white mb-2">No hay predicciones para hoy</h3>
+        <p class="text-purple-200/60 text-sm">
+          Vuelve más tarde para ver las mejores predicciones del día. El administrador las publicará tan pronto estén disponibles.
+        </p>
+      </div>
+    <% } %>
+  </div>
+</div>
+
+<!-- Simple Lightbox Modal -->
+<div id="imageModal" class="fixed inset-0 bg-black/90 backdrop-blur-md hidden z-50 flex items-center justify-center p-4">
+  <button id="closeModal" class="absolute top-4 right-4 text-white text-3xl font-bold hover:text-red-500 transition-colors duration-200" aria-label="Cerrar">&times;</button>
+  <div class="max-w-4xl max-h-[85vh] relative">
+    <img id="modalImg" class="max-w-full max-h-[80vh] rounded-xl shadow-2xl object-contain border border-white/10" src="" alt="Evidencia en pantalla completa">
+  </div>
+</div>
+
+<script>
+  const modal = document.getElementById('imageModal');
+  const modalImg = document.getElementById('modalImg');
+  const closeModal = document.getElementById('closeModal');
+  const dateFilter = document.getElementById('dateFilter');
+
+  // Existing modal logic
+  document.querySelectorAll('.view-img-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      modalImg.src = btn.getAttribute('data-img-url');
+      modal.classList.remove('hidden');
+      document.body.classList.add('overflow-hidden');
+    });
+  });
+
+  const hideModal = () => {
+    modal.classList.add('hidden');
+    document.body.classList.remove('overflow-hidden');
+  };
+
+  closeModal.addEventListener('click', hideModal);
+
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal || e.target === closeModal) {
+      hideModal();
+    }
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
+      hideModal();
+    }
+  });
+
+  // NEW: Instant filtering logic
+  dateFilter.addEventListener('change', async () => {
+    const date = dateFilter.value;
+    
+    // Fetch new content
+    try {
+      const response = await fetch(`/?date=${date}`);
+      const text = await response.text();
+      
+      // Parse the returned HTML
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(text, 'text/html');
+      
+      // Update DOM
+      document.getElementById('formattedDate').innerHTML = doc.getElementById('formattedDate').innerHTML;
+      document.getElementById('predictionsContainer').innerHTML = doc.getElementById('predictionsContainer').innerHTML;
+      
+      // Re-attach listeners to new buttons
+      document.querySelectorAll('.view-img-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          modalImg.src = btn.getAttribute('data-img-url');
+          modal.classList.remove('hidden');
+          document.body.classList.add('overflow-hidden');
+        });
+      });
+      
+      // Update URL without reloading
+      window.history.pushState({}, '', `/?date=${date}`);
+    } catch (err) {
+      console.error('Error fetching data:', err);
+    }
+  });
+</script>
+
+<%- include('partials/footer') %>

@@ -1,0 +1,32 @@
+{
+  "name": "live-bets",
+  "version": "1.0.0",
+  "description": "Manual sports predictions management system",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "build:css": "tailwindcss -i ./src/input.css -o ./public/styles.css",
+    "watch:css": "tailwindcss -i ./src/input.css -o ./public/styles.css --watch"
+  },
+  "dependencies": {
+    "express": "^5.2.1",
+    "mongoose": "^9.3.0",
+    "ejs": "^5.0.1",
+    "dotenv": "^16.0.3",
+    "express-session": "^1.19.0",
+    "bcryptjs": "^3.0.3",
+    "method-override": "^3.0.0",
+    "multer": "^2.1.1",
+    "cloudinary": "^1.41.3",
+    "express-validator": "^7.0.1",
+    "express-rate-limit": "^6.10.0",
+    "moment": "^2.29.4"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10",
+    "tailwindcss": "^3.4.13",
+    "autoprefixer": "^10.4.14",
+    "postcss": "^8.5.6"
+  }
+}

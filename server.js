@@ -56,6 +56,9 @@ app.use((req, res, next) => {
 // Register Routes
 app.use('/admin', adminRoutes);
 app.use('/', publicRoutes);
+app.get('/ping', (req, res) => {
+  res.send('Pong');
+});
 
 // 404 handler
 app.use((req, res, next) => {

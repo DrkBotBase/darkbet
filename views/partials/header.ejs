@@ -17,6 +17,34 @@
       font-family: 'Inter', sans-serif;
     }
   </style>
+  <style>
+    /* Añadir en tu CSS global o en el header */
+    .flatpickr-calendar.dark {
+      background: rgba(0, 0, 0, 0.85) !important;
+      backdrop-filter: blur(20px) !important;
+      border: 1px solid rgba(255, 255, 255, 0.1) !important;
+      border-radius: 16px !important;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8) !important;
+    }
+
+    .flatpickr-day.selected {
+      background: #a855f7 !important; /* Púrpura */
+      border-color: #a855f7 !important;
+    }
+
+    .flatpickr-day.today {
+      border-color: #fbbf24 !important; /* Amarillo */
+    }
+
+    .flatpickr-months .flatpickr-month {
+      color: #e9d5ff !important; /* Texto púrpura claro */
+    }
+
+    .flatpickr-current-month .flatpickr-monthDropdown-months {
+      background: rgba(255,255,255,0.05) !important;
+      border-radius: 8px !important;
+    }
+  </style>
 </head>
 <body class="min-h-screen bg-gradient-to-b from-slate-950 via-purple-950 to-slate-950 text-white flex flex-col justify-between">
   
